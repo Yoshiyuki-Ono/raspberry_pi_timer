@@ -12,7 +12,7 @@ CNC菜園ロボット（FarmBot)を太陽電池で駆動する電源システム
 
 菜園ロボットが稼働するのは昼間のみなので、夜間は電源供給を止めるためのもの。
 
-当初はインバータのAC100V出力のコンセントに市販のダイヤル式タイマーを取り付けて行う予定だった（下図参照）。
+当初はインバータ（DENRYO製 SK200）のAC100V出力のコンセントに市販のダイヤル式タイマーを取り付けて行う予定だった（下図参照）。
 
 ![IMG_0357](/Users/onoyoshiyuki/Documents/GitHub/raspberry_pi_timer/IMG_0357.png)
 
@@ -42,9 +42,19 @@ CNC菜園ロボット（FarmBot)を太陽電池で駆動する電源システム
 
 - RTC
   インターフェースはI2C。HATになっているので1番ピン側に合わせて差し込むだけである。
-- SSRモジュール
+- RasPi Zero === SSRモジュール
   RasPi Zero 17番ピン（3.3V)　====　SSR VCC
   RasPi Zero 39番ピン（GND)　====　SSR GND
   RasPi Zero 37番ピン（GPIO26)　====　SSR IN
   （今回は信号出力にGPIO26を使用した）
+- SSRモジュール === インバータ
+  SSR COM　===　インバータ GND
+  SSR NO　===　インバータ ~~ENB~~(ENBに上線がある端子)
+  （NO : Nomaly Open  常時開で動作時に閉）
+
+インバータをリモートモードで運転する場合、GNDと~~ENB~~が短絡すると運転開始となり、オープンだと運転停止になる。GPIO 26がHighになるとSSRが閉になり運転開始になる。GPIO26をLoにすると運転停止になる。RasPi Zeroの電源が落ちている時、SSRへの電源が供給されていない時もNOなのでインバータは運転停止になる。
+
+インバータをリモート運転させるときはインバータの裏面パネルのPOWERスイッチをREMO.側にセットする。
+
+![20210311_0001](/Users/onoyoshiyuki/Documents/GitHub/raspberry_pi_timer/20210311_0001.png)
 
