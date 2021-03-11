@@ -10,5 +10,41 @@ CNC菜園ロボット（FarmBot)を太陽電池で駆動する電源システム
 
 上記の構成図のOn/OffタイマーをRaspberry Pi Zeroを使って作製する。
 
-## 使用するパーツ
+菜園ロボットが稼働するのは昼間のみなので、夜間は電源供給を止めるためのもの。
+
+当初はインバータのAC100V出力のコンセントに市販のダイヤル式タイマーを取り付けて行う予定だった（下図参照）。
+
+![IMG_0357](/Users/onoyoshiyuki/Documents/GitHub/raspberry_pi_timer/IMG_0357.png)
+
+しかし試してみるとインバータの消費電力が思いのほか大きくバッテリーの消耗が激しいことが判明した。そこで、インバータの前段にOn/Offタイマーを設け、インバータごと通電を遮断するようにする。
+
+インバータにはリモートコントロールのための接点入力端子があるので、それを利用して制御する。
+
+![IMG_0358](/Users/onoyoshiyuki/Documents/GitHub/raspberry_pi_timer/IMG_0358.png)
+
+##  使用するパーツ
+
+- Raspberry Pi Zero W
+
+- SSRモジュール（KKHMF 1チャンネル 分離駆動リレー制御モジュール）
+
+  駆動電圧：DC　3V/3.3V
+
+  制御可：10A 250VAC、10A 30VDC
+
+- RTCモジュール（seeed PiRTC DS1307）
+  クロックチップ：DS1307
+  電源：3V CR1255リチウム電池
+
+![IMG_0353](/Users/onoyoshiyuki/Documents/GitHub/raspberry_pi_timer/IMG_0353.png)
+
+### 配線
+
+- RTC
+  インターフェースはI2C。HATになっているので1番ピン側に合わせて差し込むだけである。
+- SSRモジュール
+  RasPi Zero 17番ピン（3.3V)　====　SSR VCC
+  RasPi Zero 39番ピン（GND)　====　SSR GND
+  RasPi Zero 37番ピン（GPIO26)　====　SSR IN
+  （今回は信号出力にGPIO26を使用した）
 
