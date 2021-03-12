@@ -33,8 +33,9 @@ CNC菜園ロボット（FarmBot)を太陽電池で駆動する電源システム
   制御可：10A 250VAC、10A 30VDC
 
 - RTCモジュール（seeed PiRTC DS1307）
-  クロックチップ：DS1307
-  電源：3V CR1255リチウム電池
+
+　　クロックチップ：DS1307
+　　電源：3V CR1255リチウム電池
 
 ![IMG_0353](/Users/onoyoshiyuki/Documents/GitHub/raspberry_pi_timer/IMG_0353.png)
 
