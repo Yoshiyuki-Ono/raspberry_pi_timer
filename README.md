@@ -69,5 +69,51 @@ CNC菜園ロボット（FarmBot)を太陽電池で駆動する電源システム
 
 ![20210311_0001](/Users/onoyoshiyuki/Documents/GitHub/raspberry_pi_timer/20210311_0001.png)
 
-##　Raspberry Pi ZeroのOSセットアップ
+##　Raspberry Pi Zeroのセットアップ
+
+## Raspberry Pi OSの書き込み
+
+以下の操作はMacで行っている。
+
+使い古しのSDカード（IOデータ製 16GB）を使用したので、SD Card Formatterを使用してフォーマットを行う。
+
+Raspberry Pi財団の公式サイトからOSのイメージファイルをダウンロードする。
+
+https://www.raspberrypi.org/software/operating-systems/#raspberry-pi-os-32-bit
+
+ダウンロードしたのは、Raspberry Pi OS Lite。2021年3月13日時点でのKernelバージョンは5.4。
+
+ダウンロードされたファイルは2021-01-11-raspios-buster-armhf-lite.zip。
+
+このファイルをBalenaEtcherを使ってSDカードに書き込む。BalenaEtcherであれば解凍せずにZipのままで書き込みが可能。
+
+セットアップはUSB OTG (On-The-Go) EthernetでホストPCと接続して行う。
+
+（Qiitaの記事、https://qiita.com/Liesegang/items/dcdc669f80d1bf721c21を参考にした）
+
+SSHを有効にするため、SSDのルートディレクトリにSSHという名前の空のファイルを作製する。
+
+touchコマンドでSSHを作成する。
+
+```
+$ touch /Volumes/boot/ssh
+```
+
+次に、`config.txt`の一番最後に下記の行を追加する。
+
+```
+dtoverlay=dwc2
+```
+
+さらに、`cmdline.txt`の`rootwait`の後に`modules-load=dwc2,g_ether`を追記する。
+
+```
+console=serial0,115200 console=tty1 root=PARTUUID=e8af6eb2-02 rootfstype=ext4 elevator=deadline fsck.repair=yes rootwait modules-load=dwc2,g_ether quiet init=/usr/lib/raspi-config/init_resize.sh
+```
+
+
+
+
+
+
 
