@@ -71,7 +71,7 @@ CNC菜園ロボット（FarmBot)を太陽電池で駆動する電源システム
 
 ##　Raspberry Pi Zeroのセットアップ
 
-## Raspberry Pi OSの書き込み
+### Raspberry Pi OSの書き込み
 
 以下の操作はMacで行っている。
 
