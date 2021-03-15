@@ -162,3 +162,43 @@ RTCを使う上では、これらの挙動に注意すべきである。
 一つは、デフォルトの状態で、インターネットに繋がれば（いずれかの）NTPサーバーに接続して時刻同期をするということである。
 
 もう一つは、NTPサーバーとの通信ができない時には、直近のログイン状態時のタイムスタンプを起点に現在時刻を設定するということである。これはRTCを持たないRaspberry Pi固有の仕様であり、fake-hwclockという機能である。
+
+インターネットに接続できたところで、`update`と`upgrade`コマンドを実施する。
+
+`raspi-config`を使って、ロケールとタイムゾーンを変更する。
+
+```
+pi@raspberrypi:~ $ sudo raspi-config nonint do_change_locale ja_JP.UTF-8
+Generating locales (this might take a while)...
+  ja_JP.UTF-8... done
+Generation complete.
+pi@raspberrypi:~ $ sudo raspi-config nonint do_change_timezone Asia/Tokyo
+perl: warning: Setting locale failed.
+perl: warning: Please check that your locale settings:
+	LANGUAGE = (unset),
+	LC_ALL = (unset),
+	LANG = "en_GB.UTF-8"
+    are supported and installed on your system.
+perl: warning: Falling back to the standard locale ("C").
+locale: Cannot set LC_CTYPE to default locale: No such file or directory
+locale: Cannot set LC_MESSAGES to default locale: No such file or directory
+locale: Cannot set LC_ALL to default locale: No such file or directory
+
+Current default time zone: 'Asia/Tokyo'
+Local time is now:      Mon Mar 15 22:38:18 JST 2021.
+Universal Time is now:  Mon Mar 15 13:38:18 UTC 2021.
+```
+
+これでRTCを使っていない普通のRaspberry Pi Zeroのセットアップが完了した。念の為、`timedatectl`コマンドで時刻の設定がどうなったかを確認する。
+
+```
+pi@raspberrypi:~ $ timedatectl
+               Local time: Mon 2021-03-15 22:38:53 JST
+           Universal time: Mon 2021-03-15 13:38:53 UTC
+                 RTC time: n/a
+                Time zone: Asia/Tokyo (JST, +0900)
+System clock synchronized: yes
+              NTP service: active
+          RTC in local TZ: no
+```
+
