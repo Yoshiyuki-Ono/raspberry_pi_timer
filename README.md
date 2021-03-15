@@ -1,3 +1,7 @@
+---
+typora-copy-images-to: ./インターネット共有設定.png
+---
+
 # raspberry_pi_timer
 ## 概要・目的
 Raspberry Pi Zeroを使ったOn／Offタイマーの作製についてまとめたメモ。
@@ -111,9 +115,50 @@ dtoverlay=dwc2
 console=serial0,115200 console=tty1 root=PARTUUID=e8af6eb2-02 rootfstype=ext4 elevator=deadline fsck.repair=yes rootwait modules-load=dwc2,g_ether quiet init=/usr/lib/raspi-config/init_resize.sh
 ```
 
+## Raspberry Pi Zeroの起動と設定変更
 
+Raspberry Pi ZeroをUSB（2つある左側、基盤上にUSBと印刷してある方）でMacと接続する。Bootが終わるのを待って（初回は少し時間がかかる。LEDが点灯状態になるまで待つ）、ターミナルからSSHでログインすると、Raspberry Py Zeroのコンソールに入ることができる。
 
+まず、`timedatectl`コマンドで、クロックの設定状態を調べる。
 
+```
+pi@raspberrypi:~ $ timedatectl
+               Local time: Mon 2021-01-11 13:30:17 GMT
+           Universal time: Mon 2021-01-11 13:30:17 UTC
+                 RTC time: n/a
+                Time zone: Europe/London (GMT, +0000)
+System clock synchronized: no
+              NTP service: active
+          RTC in local TZ: no
+```
 
+RTCが有効になっていないこと、Time zoneがGMTになっていること、時刻が2021年1月11日 XX ;XX：XXに設定されていることがわかる。この日付はこのバージョン（buster）のディスクイメージファイルが作成された時のものである。
 
+またこの状態はRaspberry Pi Zeroがインターネットに接続されていないスタンドアローンの状態であることも重要なポイントになる。NPT serverとの時刻同期はできていない。
 
+Raspberry Pi ZeroをMacを介してインターネットに接続するためには、Mac側の共有設定を変更する必要がある。
+
+![](/Users/onoyoshiyuki/Documents/GitHub/raspberry_pi_timer/インターネット共有設定.png)
+
+システム環境設定＞＞共有を開き、インターネット共有でRNDIS/Ethernet Gadgetのチェックボックスにチェックを入れる。
+
+一旦、ターミナルを閉じて、SSHでRaspberry Pi Zeroのターミナルに再びログインして、`timedatectl`コマンドを実行する。
+
+```
+pi@raspberrypi:~ $ timedatectl
+               Local time: Mon 2021-03-15 12:40:52 GMT
+           Universal time: Mon 2021-03-15 12:40:52 UTC
+                 RTC time: n/a
+                Time zone: Europe/London (GMT, +0000)
+System clock synchronized: yes
+              NTP service: active
+          RTC in local TZ: no
+```
+
+Local time、Universal time どちらも現在時刻（GMTで）になっていることがわかる。NTPサーバーとの通信が可能になり、時刻同期が行われたことが確認できる。
+
+RTCを使う上では、これらの挙動に注意すべきである。
+
+一つは、デフォルトの状態で、インターネットに繋がれば（いずれかの）NTPサーバーに接続して時刻同期をするということである。
+
+もう一つは、NTPサーバーとの通信ができない時には、直近のログイン状態時のタイムスタンプを起点に現在時刻を設定するということである。これはRTCを持たないRaspberry Pi固有の仕様であり、fake-hwclockという機能である。
