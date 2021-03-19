@@ -20,7 +20,7 @@ CNC菜園ロボット（FarmBot)を太陽電池で駆動する電源システム
 
 ![IMG_0357](/Users/onoyoshiyuki/Documents/GitHub/raspberry_pi_timer/IMG_0357.png)
 
-しかし試してみるとインバータの消費電力が思いのほか大きくバッテリーの消耗が激しいことが判明した。そこで、インバータの前段にOn/Offタイマーを設け、インバータごと通電を遮断するようにする。
+しかし試してみるとインバータの消費電力が思いのほか大きくバッテリーの消耗が激しいことが判明した。そこで、インバータの前段にRaspberry Pi Zeroで作ったOn/Offタイマーを設け、インバータごと通電を遮断するようにする。Raspberry Pi ZeroはMPPTについているUSBから給電する。Raspberry Pi Zeroへの通電は常時行われるが、晴れている昼間はソーラーパネルから充電が行われており、バッテリー切れが起きる心配はない。
 
 インバータにはリモートコントロールのための接点入力端子があるので、それを利用して制御する。
 
@@ -383,7 +383,163 @@ Raspberry PiにRTCをつけるのは、インターネットに繋がないス�
 
 なおSeeedのWikiには、PiRTCのドライバは、Raspbian Jessie/Stretchのみを対象とすると書かれているが、Busterでも問題なく動作することを確認した。
 
+## Systemdを利用した定刻でのプログラム実行
 
+RTCの設定ができたので、定刻でSSRを制御する仕組みを作る。すでに配線の章で説明した通り、GPIO26をHighにするとSSRは閉になりインバータが動き出す。GPIO 26をHigh、LowにするPythonのプログラムをsystemdで定刻で実行することでインバータを定刻で起動、停止する。
 
+まず、RPi.GPIOライブラリをインストールする（その事前準備としてpipもインストールする）。systemdで起動するので実行ユーザーはrootになるため、sudoでインストールする必要がある（sudoなしの `pip3 install RPi.GPIO `だとModuleNotFoundError: No module named 'RPi'が発生しうまく動かない）。
 
+```
+pi@raspberrypi:~ $ sudo apt-get -y install python3-dev
 
+pi@raspberrypi:~ $ sudo apt-get -y install python3-pip
+
+pi@raspberrypi:~ $ sudo pip3 install RPi.GPIO
+```
+
+PythonのプログラムはGPIO26を制御するだけの単純なものでる。
+
+```
+# set_on.py
+import RPi.GPIO as GPIO
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(26,GPIO.OUT)
+GPIO.output(26,1)
+
+# set_off.py
+import RPi.GPIO as GPIO
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(26,GPIO.OUT)
+GPIO.output(26,0)
+GPIO.cleanup()
+
+```
+
+このプログラムを定刻で実行するためにsystemdの設定をする。
+
+Systemdの設定に関しては、molchiro氏のqiitaの記事を参考にさせていただいた。
+
+https://qiita.com/molchiro/items/ee32a11b81fa1dc2fd8d
+
+### serviceファイルの作成
+
+/etc/systemd/systemの下にseviseファイルを作成する。そのserviceファイルの中で前述のPythonプログラムを呼ぶシェルを記述する。
+
+```
+# /etc/systemd/system/set_on.service
+
+[Unit]
+Description=do something
+
+[Service]
+ExecStart=/usr/bin/python3 /home/pi/set_on.py
+```
+
+```
+# /etc/systemd/system/set_off.service
+
+[Unit]
+Description=do something
+
+[Service]
+ExecStart=/usr/bin/python3 /home/pi/set_off.py
+```
+
+### timerファイルの作成
+
+前述のserviceを定刻で呼び出すためのtimerファイルを/etc/systemd/systemの下に作成する。呼び出すserviceは明示的に指定しない場合は、同名のserviceが呼び出される。
+
+```
+# /etc/systemd/system/set_on.timer
+
+[Unit]
+Description=daily do something
+
+[Timer]
+OnCalendar=*-*-* 8:00
+
+[Install]
+WantedBy=timers.target
+```
+
+```
+# /etc/systemd/system/set_off.timer
+
+[Unit]
+Description=daily do something
+
+[Timer]
+OnCalendar=*-*-* 9:00
+
+[Install]
+WantedBy=timers.target
+```
+
+### Timerの有効化
+
+作成したtimerファイルをsystemdに登録して有効化する。
+
+```
+pi@raspberrypi:~ $ sudo systemctl enable set_on.timer
+pi@raspberrypi:~ $ sudo systemctl enable set_off.timer
+```
+
+timerの登録がうまくできているかは、`systemctl status `コマンドで確認できる。
+
+```
+pi@raspberrypi:~ $ systemctl status set_on.timer
+● set_on.timer - daily do something
+   Loaded: loaded (/etc/systemd/system/set_on.timer; enabled; vendor preset: enabled)
+   Active: active (waiting) since Fri 2021-03-19 01:52:49 JST; 7h ago
+  Trigger: Sat 2021-03-20 08:00:00 JST; 22h left
+```
+
+timerを無効化するには、`systemctl disable`コマンドを実行する。`systemctl status `コマンドを実行すると無効になっていることが確認できる。
+
+```
+pi@raspberrypi:~ $ sudo systemctl disable set_on.timer
+Removed /etc/systemd/system/timers.target.wants/set_on.timer.
+pi@raspberrypi:~ $ systemctl status set_on.timer
+● set_on.timer - daily do something
+   Loaded: loaded (/etc/systemd/system/set_on.timer; disabled; vendor preset: enabled)
+   Active: active (waiting) since Fri 2021-03-19 01:52:49 JST; 7h ago
+  Trigger: Sat 2021-03-20 08:00:00 JST; 22h left
+
+ 3月 19 01:52:49 raspberrypi systemd[1]: Started daily do something.
+```
+
+ここまでで設定は全て完了となる。
+
+rebootをするとtimerが動き出すので、設定した時刻に正しく動く（この場合、8時にインバータが起動し、9時にシャットダウンされる）ことを確認する。
+
+#### 参考（サービス登録の失敗）
+
+最初、RPi.GPIOのインストールをsudoで実行しなかったため、うまくサービスが動かなかった。その時のサービス登録時の挙動を参考までに、残しておく。
+
+```
+pi@raspberrypi:~ $ sudo systemctl enable set_on.service
+Created symlink /etc/systemd/system/multi-user.target.wants/set_on.service → /etc/systemd/system/set_on.service.
+pi@raspberrypi:~ $ systemctl status set_on.service
+● set_on.service - do something
+   Loaded: loaded (/etc/systemd/system/set_on.service; enabled; vendor preset: enabled)
+   Active: failed (Result: exit-code) since Fri 2021-03-19 00:18:23 JST; 21min ago
+ Main PID: 817 (code=exited, status=1/FAILURE)
+
+ 3月 19 00:18:23 raspberrypi systemd[1]: Started do something.
+ 3月 19 00:18:23 raspberrypi python3[817]: Traceback (most recent call last):
+ 3月 19 00:18:23 raspberrypi python3[817]:   File "/home/pi/set_on.py", line 1, in <module>
+ 3月 19 00:18:23 raspberrypi python3[817]:     import RPi.GPIO as GPIO
+ 3月 19 00:18:23 raspberrypi python3[817]: ModuleNotFoundError: No module named 'RPi'
+ 3月 19 00:18:23 raspberrypi systemd[1]: set_on.service: Main process exited, code=exited, status=1/FAILURE
+ 3月 19 00:18:23 raspberrypi systemd[1]: set_on.service: Failed with result 'exit-code'.
+```
+
+timerの登録の時には正常に実行できているように見えるが、実際には定刻になっても何も起こらない。`systemctl status `コマンドを実行しないと登録に失敗していることがわからないので注意が必要である。
+
+# まとめ
+
+以上、Raspberry Pi Zeroを使った定刻でインバータをOn/Offするタイマーの作製方法についての備忘録。
+
+現在、このタイマーのおかげで菜園ロボットは問題なく稼働している。
+
+今回は、インバータが接点入力だったのでSSRは単純なOpen /Closeとして使ったが、電源を直列に接続すればさまざまな機器への電力供給の時刻による制御が可能である。今回使用したSSRはAC100VやDC24Vも制御できるので、幅広い機器に利用できる。Raspberry Pi Zeroにはプログラムで制御できる26のGPIOピンを持っているので、SSRを増やせば最大、26台の機器の制御が可能である。ただしSSRで大容量の電流の制御を行うと、信号側の消費電流も大きくなるので、その点は注意する必要があるであろう。
